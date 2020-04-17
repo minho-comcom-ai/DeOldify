@@ -57,10 +57,10 @@ def process_image():
         return callback, 200
 
     except DownloadPrecheckFailed as e:
-        return jsonify({'message': str(e)}), 500
+        return jsonify({'message': str(e)}), 400
     except:
         traceback.print_exc()
-        return jsonify({'message': 'input error'}), 400
+        return jsonify({'message': 'inference error'}), 500
 
     finally:
         pass
