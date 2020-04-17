@@ -10,9 +10,9 @@ from skimage.filters import gaussian
 from PIL import Image
 
 def compress_image(image, path_original):
-    size = 1920, 1080
-    width = 1920
-    height = 1080
+    size = 960, 540
+    width = 960
+    height = 540
 
     name = os.path.basename(path_original).split('.')
     first_name = os.path.join(os.path.dirname(path_original), name[0] + '.jpg')
@@ -80,12 +80,32 @@ def blur(image, x0, x1, y0, y1, sigma=1, multichannel=True):
     return im
 
 
+class DownloadPrecheckFailed(Exception):
+    pass
+
+
+DOWNLOAD_MAX_SIZE = 5 * 1024 * 1024
+
 
 def download(url, filename):
-    data = requests.get(url).content
+    r = requests.get(url, stream=True)
+    # Precheck
+    content_type = r.headers.get('Content-Type')
+    if not content_type or content_type not in (
+        'image/jpeg',
+        'image/png',
+    ):
+        raise DownloadPrecheckFailed('Non-image url is not supported.')
+    content_length = int(r.headers.get('Content-Length', 0))
+    if not content_length or content_length > DOWNLOAD_MAX_SIZE:
+        raise DownloadPrecheckFailed('Size of file should be less than 5Mb.')
+    downloaded_size = 0
     with open(filename, 'wb') as handler:
-        handler.write(data)
-
+        for data in r.iter_content():
+            handler.write(data)
+            downloaded_size += len(data)
+            if downloaded_size > DOWNLOAD_MAX_SIZE:
+                raise DownloadPrecheckFailed('Size of file should be less than 5Mb.')
     return filename
 
 

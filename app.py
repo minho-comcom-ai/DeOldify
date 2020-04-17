@@ -8,7 +8,7 @@ from flask import jsonify
 from flask import send_file
 
 
-from app_utils import download
+from app_utils import download, DownloadPrecheckFailed
 from app_utils import generate_random_filename
 from app_utils import clean_me
 from app_utils import clean_all
@@ -43,7 +43,7 @@ def process_image():
         render_factor = 35 #int(request.json["render_factor"])
 
         download(url, input_path)
-
+        # ToDo: size tranform
         try:
             image_colorizer.plot_transformed_image(path=input_path, figsize=(20,20),
             render_factor=render_factor, display_render_factor=True, compare=False)
@@ -56,9 +56,11 @@ def process_image():
         
         return callback, 200
 
+    except DownloadPrecheckFailed as e:
+        return jsonify({'message': str(e)}), 500
     except:
         traceback.print_exc()
-        return {'message': 'input error'}, 400
+        return jsonify({'message': 'input error'}), 400
 
     finally:
         pass
@@ -82,7 +84,11 @@ def main():
     <div class="jumbotron mt-3">
     <h1>ainized-DeOldify</h1>
     <A>Git hub repository : </A> <A href="https://bit.ly/39xp9db"> DeOldify </A> <br>
-    <A>API deployed on  </A> <A href="http://bit.ly/390JkQr"> Ainize </A>
+    <A>API deployed on  </A> <A href="http://bit.ly/390JkQr"> Ainize </A> <br>
+    <A>NOTE! </A><br>
+    <A>If you want to put an image url from Google drive, You can use code:"https://drive.google.com/uc?export=view&id=${imageId}"</A> <br>
+    <A>You can use an image url from this website. </A> <A href="https://imgur.com/"> Link</A><br>
+    <A>Sample image homepage : </A> <A href="https://unsplash.com/wallpapers/colors/black-and-white"> Link</A> <br>
     <hr class="my-4">
     <h3>Image URL: <input id="source_url" placeholder="http://"> </h3><br>
     <style>
@@ -96,11 +102,11 @@ def main():
     <div>
         <h2>Select type!</h2>
         <input type="radio" name="type" id="option" value="picture"> Picture <br>
-        <input type="radio" name="type" id="option" value="anime"> Animation <br>
+        <input type="radio" name="type" id="option" value="anime"> sketch <br>
     </div>
     <h3>RUN:  <button type="submit" class="btn btn-primary btn-lg" id="submit">Submit</button></h3>
     <div id="result">
-        <image id="resultImage">
+        <image id="resultImage" width="960" height="540">
     </div>
     <script>
     const run = (retry_cnt=0, retry_sec=1,) => {
@@ -137,6 +143,10 @@ def main():
                             run(retry_cnt, retry_sec)
                         }, retry_sec * 1000
                     )
+                } else if (response.status === 500) {
+                    return response.json().then(errorPayload => {
+                        throw Error(errorPayload.message);
+                    });
                 } else {
                     throw Error('Server Error - Debugging Please!');
                 }
@@ -144,8 +154,12 @@ def main():
             .then(response => response.blob())
             .then(blob => URL.createObjectURL(blob))
             .then(imageURL => {
+                document.getElementById('result').innerText = '';
                 document.getElementById('result').style.display = 'block';
                 document.getElementById('resultImage').src = imageURL;
+            })
+            .catch(e => {
+                document.getElementById('result').innerText = e.message;
             })
     };
 
